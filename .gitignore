@@ -35,6 +35,12 @@ lerna-debug.log*
 # Vercel
 .vercel
 
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
 # TypeScript
 *.tsbuildinfo
 *.tsbuildinfo.*
