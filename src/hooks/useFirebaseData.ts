@@ -3,12 +3,6 @@ import {
   doc,
   setDoc,
   onSnapshot,
-  collection,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  orderBy,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
