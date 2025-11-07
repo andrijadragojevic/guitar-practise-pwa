@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { useAppData } from './hooks/useAppData';
+import { useState, useEffect } from 'react';
+import { useFirebaseData } from './hooks/useFirebaseData';
 import { useDarkMode } from './hooks/useDarkMode';
+import { useAuth } from './contexts/AuthContext';
 import { ExerciseList } from './components/ExerciseList';
 import { RoutineList } from './components/RoutineList';
 import { PracticeList } from './components/PracticeList';
@@ -11,11 +12,13 @@ import { InfoPages } from './components/InfoPages';
 import { LogsList } from './components/LogsList';
 import { Modal } from './components/Modal';
 import { InstallPrompt } from './components/InstallPrompt';
+import { AuthModal } from './components/AuthModal';
 import { Routine } from './types';
 
 type View = 'practice' | 'exercises' | 'routines' | 'routine-editor' | 'session' | 'info' | 'logs';
 
 function App() {
+  const { user, loading, isAnonymous } = useAuth();
   const {
     data,
     addExercise,
@@ -27,12 +30,27 @@ function App() {
     exportData,
     importData,
     addLog,
-  } = useAppData();
+    isOnline,
+  } = useFirebaseData();
 
   const { isDark, toggleDarkMode } = useDarkMode();
   const [view, setView] = useState<View>('practice');
   const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null);
   const [isDataModalOpen, setIsDataModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [profileImageError, setProfileImageError] = useState(false);
+
+  // Show auth modal on first load if not signed in
+  useEffect(() => {
+    if (!loading && !user) {
+      setIsAuthModalOpen(true);
+    }
+  }, [loading, user]);
+
+  // Reset profile image error when user changes
+  useEffect(() => {
+    setProfileImageError(false);
+  }, [user?.photoURL]);
 
   const handleSelectRoutine = (routine: Routine) => {
     setSelectedRoutine(routine);
@@ -66,15 +84,66 @@ function App() {
     });
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 transition-colors flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300">Loading your data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 transition-colors">
       <InstallPrompt />
       <div className="container mx-auto px-4 py-6 max-w-4xl">
         <header className="mb-6 flex justify-between items-start">
           <div>
-            <h1 className="text-4xl font-bold text-gray-800 dark:text-white mb-2">Guitar Practice</h1>
+            <h1 className="text-4xl font-bold text-gray-800 dark:text-white mb-2">
+              Guitar Practice
+              {!isOnline && (
+                <span className="ml-3 text-sm font-normal text-orange-600 dark:text-orange-400">
+                  (Offline)
+                </span>
+              )}
+            </h1>
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="bg-white dark:bg-gray-700 p-3 rounded-lg shadow-md hover:shadow-lg transition relative"
+              title={isAnonymous ? 'Anonymous Account' : user?.displayName || 'Account'}
+            >
+              {user?.photoURL && !profileImageError ? (
+                <img
+                  src={user.photoURL}
+                  alt="Profile"
+                  className="h-6 w-6 rounded-full object-cover"
+                  onError={() => setProfileImageError(true)}
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6 text-gray-700 dark:text-gray-300"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+              )}
+              {!isAnonymous && (
+                <span className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></span>
+              )}
+            </button>
             <button
               onClick={() => setView('info')}
               className="bg-white dark:bg-gray-700 p-3 rounded-lg shadow-md hover:shadow-lg transition"
@@ -262,6 +331,11 @@ function App() {
         >
           <DataManagement onExport={exportData} onImport={importData} />
         </Modal>
+
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+        />
       </div>
     </div>
   );
